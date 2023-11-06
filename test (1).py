@@ -26,6 +26,16 @@ class Layer_Dense:
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
         self.dinputs = np.dot(dvalues, self.weights.T)
 
+#Sigmoid activation (0 min, 1 max)
+class Activation_Sigmoid:
+    def forward(self,inputs):
+        #save inputs of sigmoid
+        self.inputs = inputs
+        self.output = 1 / (1+ np.exp(-inputs))
+
+    def backward(self, dvalues):
+        self.dinputs = dvalues * (1 - self.output) * self.output
+
 
 # ReLU activation (rectified linear unit)
 class Activation_ReLU:
@@ -392,10 +402,10 @@ dense2 = Layer_Dense(64, 3)
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 
 # optimizer auswählen
-optimizer = Optimizer_SGD()
-#optimizer = Optimizer_Adagrad()
-#optimizer = Optimizer_RMSprop()
-#optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-7)
+#optimizer = Optimizer_SGD(decay=1e-3, momentum = 0.9)
+#optimizer = Optimizer_Adagrad(decay=1e-4)
+#optimizer = Optimizer_RMSprop(decay=1e-4)
+optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-7)
 
 # 10001 epochen
 for epoch in range(10001):
