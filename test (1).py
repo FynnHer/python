@@ -392,10 +392,10 @@ dense2 = Layer_Dense(64, 3)
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 
 # optimizer auswählen
-#optimizer = Optimizer_SGD()
+optimizer = Optimizer_SGD()
 #optimizer = Optimizer_Adagrad()
 #optimizer = Optimizer_RMSprop()
-optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-7)
+#optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-7)
 
 # 10001 epochen
 for epoch in range(10001):
