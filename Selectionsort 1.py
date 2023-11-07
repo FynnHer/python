@@ -4,15 +4,8 @@ liste = [45,3,24,234,35,234,2412,31,42]
 lneu = []
 
 def searchLow(list, lneu):
-    helper = 
-    counter = 0
-    while counter < len(list):
-        if list[counter] < helper:
-            lneu.append(list[counter])
-            list.pop(counter)
-            break
-        if not counter == len(list) - 1:
-        	counter += 1
-        else:
+ while len(list) > 0:
+    lneu.append(min(list))
+    list.pop(min(list))
             
 	
