@@ -6,7 +6,7 @@ lneu = []
 def selectionsort(list, lneu):
  while len(list) > 0:
     lneu.append(min(list))
-    list.pop(min(list))
+    list.remove(min(list))
             
 selectionsort(liste, lneu)
 print(lneu)

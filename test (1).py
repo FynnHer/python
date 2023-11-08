@@ -408,7 +408,7 @@ loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-7)
 
 # 10001 epochen
-for epoch in range(10001):
+for epoch in range(100001):
 
     #normaler forward pass
     dense1.forward(X)
