@@ -493,7 +493,7 @@ activation1 = Activation_ReLU()
 
 dropout1 = Layer_Dropout(0.1)
 # layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
-dense2 = Layer_Dense(64, 1)
+dense2 = Layer_Dense(64, 3)
 
 activation2 = Activation_Sigmoid()
 # 2. activation mit verbindung zu loss
