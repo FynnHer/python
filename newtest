@@ -10,10 +10,15 @@ nnfs.init()
 class Layer_Dense:
 
     # Layer initialisieren (beim erstellen des Layers)
-    def __init__(self, n_inputs, n_neurons):
+    def __init__(self, n_inputs, n_neurons, weight_regularizer_l1=0, weight_regularizer_l2=0, bias_regularizer_l1=0, bias_regularizer_l2=0):
         # weights und biases zufällige werte
         self.weights = 0.01 * np.random.randn(n_inputs, n_neurons)
         self.biases = np.zeros((1, n_neurons))
+        #regularizer strenght setzen
+        self.weight_regularizer_l1 = weight_regularizer_l1
+        self.weight_regularizer_l2 = weight_regularizer_l2
+        self.bias_regularizer_l1 = bias_regularizer_l1
+        self.bias_regularizer_l2 = bias_regularizer_l2
 
     # normal output berechnen
     def forward(self, inputs):
@@ -24,17 +29,47 @@ class Layer_Dense:
     def backward(self, dvalues):
         self.dweights = np.dot(self.inputs.T, dvalues)
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
+
+        #Gradients on regularization
+        #put L1 on weights
+        if self.weight_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.weights)
+            dL1[self.weights < 0] = -1
+            self.dweights += self.weight_regularizer_l1 * dL1
+        #put L2 on weights
+        if self.weight_regularizer_l2 > 0:
+            self.dweights += 2 * self.weight_regularizer_l2 * self.weights
+
+        #L1 on biases
+        if self.bias_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.biases)
+            dL1[self.biases < 0] = -1
+            self.dbiases += self.bias_regularizer_l1 * dL1
+        
+        #L2 on biases
+        if self.bias_regularizer_l2 > 0:
+            self.dbiases += 2 * self.bias_regularizer_l2 * self.biases
+
+
         self.dinputs = np.dot(dvalues, self.weights.T)
 
-#Sigmoid activation (0 min, 1 max)
-class Activation_Sigmoid:
-    def forward(self,inputs):
-        #save inputs of sigmoid
+
+class Layer_Dropout:
+
+    def __init__(self, rate):
+        #store and invert rate
+        self.rate = 1 - rate
+
+    def forward(self, inputs):
+
         self.inputs = inputs
-        self.output = 1 / (1+ np.exp(-inputs))
+        self.binary_mask = np.random.binomial(1, self.rate, size=inputs.shape) / self.rate
+
+        self.output = inputs * self.binary_mask
 
     def backward(self, dvalues):
-        self.dinputs = dvalues * (1 - self.output) * self.output
+        self.dinputs = dvalues * self.binary_mask
+
 
 
 # ReLU activation (rectified linear unit)
@@ -90,6 +125,18 @@ class Activation_Softmax:
             
             self.dinputs[index] = np.dot(jacobian_matrix,
                                          single_dvalues)
+
+
+
+#Sigmoid activation (0 min, 1 max)
+class Activation_Sigmoid:
+    def forward(self,inputs):
+        #save inputs of sigmoid
+        self.inputs = inputs
+        self.output = 1 / (1+ np.exp(-inputs))
+
+    def backward(self, dvalues):
+        self.dinputs = dvalues * (1 - self.output) * self.output
 
 
 # SGD optimizer
@@ -309,6 +356,34 @@ class Loss:
         data_loss = np.mean(sample_losses)
 
         return data_loss
+
+
+class Loss_BinaryCrossentropy(Loss):
+
+    def forward(self, y_pred, y_true):
+
+        #clip to prevent division by 0
+        #clip both sides to prevent mean
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        sample_losses = -(y_true * np.log(y_pred_clipped) + (1 - y_true) * 
+                          np.log(1 - y_pred_clipped))
+        sample_losses = np.mean(sample_losses, axis=1)
+
+        return sample_losses
+    
+    def backward(self, dvalues, y_true):
+        #number of samples
+        samples = len(dvalues)
+        #number of outputs per sample, count with first sample
+        outputs = len(dvalues[0])
+        #clip to prevent division by 0 and clip both sides to prevent mean
+        clipped_values = np.clip(dvalues, 1e-7, 1 - 1e-7)
+
+        self.dinputs = -(y_true / clipped_values - (1 - y_true) /
+                         (1 - clipped_values)) / outputs
+        
+        self.dinputs = self.dinputs / samples
 
 
 # Cross-entropy loss funktion
