@@ -491,7 +491,7 @@ dense1 = Layer_Dense(2, 64, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4
 # activation function ReLU
 activation1 = Activation_ReLU()
 
-dropout1 = Layer_Dropout(0.1)
+#dropout1 = Layer_Dropout(0.4)
 # layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
 dense2 = Layer_Dense(64, 3)
 
@@ -518,8 +518,8 @@ for epoch in range(10001):
 
     #dropout variante
     
-    dropout1.forward(activation1.output)
-    dense2.forward(dropout1.output)
+    #dropout1.forward(activation1.output)
+    dense2.forward(activation1.output)
 
 
     #binary variante
@@ -556,8 +556,8 @@ for epoch in range(10001):
     # backward pass ausführen (partial derivatives)
     loss_activation.backward(loss_activation.output, y)
     dense2.backward(loss_activation.dinputs)
-    dropout1.backward(dense2.dinputs)
-    activation1.backward(dropout1.dinputs)
+    #dropout1.backward(dense2.dinputs)
+    activation1.backward(dense2.dinputs)
     dense1.backward(activation1.dinputs)
 
     #loss_function.backward(activation2.output, y)
