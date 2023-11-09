@@ -237,8 +237,6 @@ class Optimizer_Adagrad:
 
 # RMSprop optimizer
 class Optimizer_RMSprop:
-#wie bei anderen optimizern
-
     def __init__(self, learning_rate=0.001, decay=0., epsilon=1e-7,
                  rho=0.9):
         self.learning_rate = learning_rate
@@ -348,10 +346,9 @@ class Loss:
 
         # loss für samples berechnen
         sample_losses = self.forward(output, y)
-
+        
         # durchschnitt berechnen
         data_loss = np.mean(sample_losses)
-
         return data_loss
     
     def regularization_loss(self, layer):
@@ -482,28 +479,37 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
 #X, y = spiral_data(samples=100, classes=2)
 X, y = spiral_data(samples=100, classes=3)
 
-x_tester = np.zeros(100,5)
-y_tester = np.zeros(100,5)
+tester_x = np.zeros((100, 5))
+tester_y = np.zeros((100, 5))
+
+helper = []
+    
+for i in range(100):
+    tester_x[i] = randint(1,100), randint(1,100),randint(1,100),randint(1,100),randint(1,100),
 
 for i in range(100):
-    x_tester[i]=randint(1,100),randint(1,100), randint(1,100), randint(1,100), randint(1,100)
-    helper = x_tester[i]
-    y_tester[i]=helper.sort()
+    helper=[]
+    for e in tester_x[i]:
+        helper.append(e)
+    helper.sort()
+    tester_y[i] = helper
+
+
 # create list in list
 # from [0,0,0,0,0,...] to [[0],[0],[0],[0],...]
 #y = y.reshape(-1,1)
-print(x_tester, y_tester)
+
 #layer 1 mit 64 neuronen und 2 inputs
-dense1 = Layer_Dense(2, 64, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
+dense1 = Layer_Dense(5, 128, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
 
 # activation function ReLU
 activation1 = Activation_ReLU()
 
-dropout1 = Layer_Dropout(0.1)
+#dropout1 = Layer_Dropout(0.1)
 # layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
-dense2 = Layer_Dense(64, 1)
+dense2 = Layer_Dense(128, 5)
 
-activation2 = Activation_Sigmoid()
+activation2 = Activation_ReLU()
 # 2. activation mit verbindung zu loss
 loss_activation = Loss_CategoricalCrossentropy()
 
@@ -520,52 +526,52 @@ optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-5)
 for epoch in range(10001):
 
     #normaler forward pass
-    dense1.forward(X)
+    dense1.forward(tester_x)
 
     activation1.forward(dense1.output)
 
     #dropout variante
     
-    dropout1.forward(activation1.output)
-    dense2.forward(dropout1.output)
-
+    #dropout1.forward(activation1.output)
+    dense2.forward(activation1.output)
+    activation2.forward(dense2.output)
 
     #binary variante
     #dense2.forward(activation1.output)
-    #activation2.forward(dense2.output)
 
-    data_loss = loss_activation.forward(dense2.output, y)
+    #print(activation2.output, tester_y)
+    data_loss = loss_activation.calculate(activation2.output, tester_y)
+    #data_loss = loss_activation.calculate(activation2.output, tester_y)
     #data_loss = loss_function.calculate(activation2.output, y)
-
-    regularization_loss = loss_activation.loss.regularization_loss(dense1) + loss_activation.loss.regularization_loss(dense2)
+    regularization_loss = loss_activation.regularization_loss(dense1) + loss_activation.regularization_loss(dense2)
     #regularization_loss = loss_function.regularization_loss(dense1) + loss_function.regularization_loss(dense2)
 
     loss = data_loss + regularization_loss
-
+    #loss = data_loss
     # Accuracy berechnen
-    predictions = np.argmax(loss_activation.output, axis=1)
-    if len(y.shape) == 2:
-        y = np.argmax(y, axis=1)
-    accuracy = np.mean(predictions==y)
-
+    #predictions = np.argmax(loss_activation.output, axis=1)
+    #if len(y.shape) == 2:
+    #    tester_y = np.argmax(tester_y, axis=1)
+    #accuracy = np.mean(predictions==tester_y)
     #predictions = (activation2.output > 0.5) * 1
     #accuracy = np.mean(predictions==y)
 
+    print(data_loss)
 
     #jede 100. epoche alle werte anzeigen
     if not epoch % 100:
         print(f'epoch: {epoch}, ' +
-              f'acc: {accuracy:.3}, ' +
+     #         f'acc: {accuracy:.3}, ' +
               f'loss: {loss:.3} (' +
               f'data_loss: {data_loss:.3f}, ' +
               f'reg_loss: {regularization_loss:.3f}), ' +
               f'lr: {optimizer.current_learning_rate}')
 
     # backward pass ausführen (partial derivatives)
-    loss_activation.backward(loss_activation.output, y)
+    loss_activation.backward(loss_activation.output, tester_y)
     dense2.backward(loss_activation.dinputs)
-    dropout1.backward(dense2.dinputs)
-    activation1.backward(dropout1.dinputs)
+    #dropout1.backward(dense2.dinputs)
+    activation1.backward(dense2.dinputs)
     dense1.backward(activation1.dinputs)
 
     #loss_function.backward(activation2.output, y)
