@@ -479,23 +479,25 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
 
 # Dataset erstellen
 #X, y = spiral_data(samples=100, classes=2)
-X, y = spiral_data(samples=100, classes=3)
+X, y = spiral_data(samples=500, classes=3)
 
 # create list in list
 # from [0,0,0,0,0,...] to [[0],[0],[0],[0],...]
 #y = y.reshape(-1,1)
 
 #layer 1 mit 64 neuronen und 2 inputs
-dense1 = Layer_Dense(2, 64, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
+dense1 = Layer_Dense(2, 512, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
 
 # activation function ReLU
 activation1 = Activation_ReLU()
 
-#dropout1 = Layer_Dropout(0.4)
+dropout1 = Layer_Dropout(0.05)
 # layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
-dense2 = Layer_Dense(64, 3)
+dense2 = Layer_Dense(512, 3)
 
-activation2 = Activation_Sigmoid()
+#activation2 = Activation_ReLU()
+
+#dense3 = Layer_Dense(64,3)
 # 2. activation mit verbindung zu loss
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 
@@ -505,7 +507,7 @@ loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 #optimizer = Optimizer_SGD(decay=1e-3, momentum = 0.9)
 #optimizer = Optimizer_Adagrad(decay=1e-4)
 #optimizer = Optimizer_RMSprop(decay=1e-4)
-optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-5)
+optimizer = Optimizer_Adam(learning_rate=0.02, decay=5e-5)
 #optimizer = Optimizer_Adam(decay=5e-7)
 
 # 10001 epochen
@@ -518,9 +520,9 @@ for epoch in range(10001):
 
     #dropout variante
     
-    #dropout1.forward(activation1.output)
-    dense2.forward(activation1.output)
-
+    dropout1.forward(activation1.output)
+    dense2.forward(dropout1.output)
+   
 
     #binary variante
     #dense2.forward(activation1.output)
@@ -555,9 +557,10 @@ for epoch in range(10001):
 
     # backward pass ausführen (partial derivatives)
     loss_activation.backward(loss_activation.output, y)
+
     dense2.backward(loss_activation.dinputs)
-    #dropout1.backward(dense2.dinputs)
-    activation1.backward(dense2.dinputs)
+    dropout1.backward(dense2.dinputs)
+    activation1.backward(dropout1.dinputs)
     dense1.backward(activation1.dinputs)
 
     #loss_function.backward(activation2.output, y)
@@ -576,7 +579,9 @@ for epoch in range(10001):
 X_test, y_test = spiral_data(samples=100, classes=3)
 dense1.forward(X_test)
 activation1.forward(dense1.output)
-dense2.forward(activation1.output)
+dropout1.forward(activation1.output)
+dense2.forward(dropout1.output)
+
 loss = loss_activation.forward(dense2.output, y_test)
 
 predictions = np.argmax(loss_activation.output, axis=1)
