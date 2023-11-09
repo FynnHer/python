@@ -485,10 +485,14 @@ X, y = spiral_data(samples=100, classes=3)
 x_tester = np.zeros(100,5)
 y_tester = np.zeros(100,5)
 
+for i in range(100):
+    x_tester[i]=randint(1,100),randint(1,100), randint(1,100), randint(1,100), randint(1,100)
+    helper = x_tester[i]
+    y_tester[i]=helper.sort()
 # create list in list
 # from [0,0,0,0,0,...] to [[0],[0],[0],[0],...]
 #y = y.reshape(-1,1)
-
+print(x_tester, y_tester)
 #layer 1 mit 64 neuronen und 2 inputs
 dense1 = Layer_Dense(2, 64, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
 
