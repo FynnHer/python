@@ -5,15 +5,58 @@ from nnfs.datasets import sine_data
 import matplotlib.pyplot as plt
 nnfs.init()
 
+class Model:
+    
+    def __init__(self):       
+        self.layers = []
+        
+    def add(self, layer):
+        self.layers.append(layer)
+        
+    def set(self, *, loss, optimizer):
+        self.loss = loss
+        self.optimizer = optimizer
+                
+    def finalize(self):
+        self.input_layer = Layer_Input()
+        layer_count = len(self.layers)
+        self.trainable_layers = []
+        
+        for i in range(layer_count):
+            if i == 0:
+                self.layers[i].prev = self.input_layer
+                self.layers[i].next = self.layers[i+1]
+            elif i < layer_count - 1:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.layers[i+1]
+            else:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.loss
+                self.output_layer_activation = self.layers[i]
+                
+            if hasattr(self.layers[i], 'weights'):
+                self.trainable_layers.append(self.layers[i])
+       
+    def train(self, X, y, *, epochs=1, print_every=1):       
+        for epoch in range(1, epochs+1):          
+                output = self.forward(X)
+                print(output)
+                exit()
+             
+    def forward(self, X):
+        self.input_layer.forward(X)
+        for layer in self.layers:
+            layer.forward(layer.prev.output)
+            
+        return layer.output
 
 
-#sample Layer
 class Layer_Dense:
 
     # Layer initialisieren (beim erstellen des Layers)
     def __init__(self, n_inputs, n_neurons, weight_regularizer_l1=0, weight_regularizer_l2=0, bias_regularizer_l1=0, bias_regularizer_l2=0):
         # weights und biases zufällige werte
-        self.weights = 0.01 * np.random.randn(n_inputs, n_neurons)
+        self.weights = 0.1 * np.random.randn(n_inputs, n_neurons)
         self.biases = np.zeros((1, n_neurons))
         #regularizer strenght setzen
         self.weight_regularizer_l1 = weight_regularizer_l1
@@ -54,7 +97,11 @@ class Layer_Dense:
 
         self.dinputs = np.dot(dvalues, self.weights.T)
 
-#Dropout
+class Layer_Input:
+       
+    def forward(self, inputs):
+        self.output = inputs
+
 class Layer_Dropout:
 
     def __init__(self, rate):
@@ -521,32 +568,30 @@ class Loss_MeanAbsoluteError(Loss):
 X, y = sine_data()
 
 #y = y.reshape(-1,1)
+model = Model()
 
-#dense1 = Layer_Dense(2, 64, weight_regularizer_l2=5e-4,bias_regularizer_l2=5e-4)
-dense1 = Layer_Dense(1, 64)
+model.add(Layer_Dense(1,64))
+model.add(Activation_ReLU)
+model.add(Layer_Dense(64,64))
+model.add(Activation_ReLU)
+model.add(Layer_Dense(64,1))
+model.add(Activation_Linear())
 
-# activation function ReLU
-activation1 = Activation_ReLU()
+model.set(
+    loss=Loss_MeanSquaredError(),
+    optimizer=Optimizer_Adam(learning_rate=0.005, decay=1e-3),
+)
 
-#dropout1 = Layer_Dropout(0.05)
-# layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
-dense2 = Layer_Dense(64, 1)
+model.finalize()
 
-activation2 = Activation_Linear()
-
-#dense3 = Layer_Dense(64,3)
-# 2. activation mit verbindung zu loss
-#loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
-
-loss_function = Loss_MeanSquaredError()
-
+model.train(X, y, epochs=10000, print_every=100)
 # optimizer auswählen
 #optimizer = Optimizer_SGD(decay=1e-3, momentum = 0.9)
 #optimizer = Optimizer_Adagrad(decay=1e-4)
 #optimizer = Optimizer_RMSprop(decay=1e-4)
 #optimizer = Optimizer_Adam(learning_rate=0.02, decay=5e-5)
 #optimizer = Optimizer_Adam(decay=5e-7)
-optimizer = Optimizer_Adam()
+
 
 accuracy_precision = np.std(y) / 250
 
@@ -560,12 +605,15 @@ for epoch in range(10001):
     dense2.forward(activation1.output)
     activation2.forward(dense2.output)
 
+    dense3.forward(activation2.output)
+    activation3.forward(dense3.output)
     #data_loss = loss_activation.forward(dense2.output, y)
-    data_loss = loss_function.calculate(activation2.output, y)
+    data_loss = loss_function.calculate(activation3.output, y)
 
     #regularization_loss = loss_activation.loss.regularization_loss(dense1) + loss_activation.loss.regularization_loss(dense2)
     regularization_loss = loss_function.regularization_loss(dense1) + \
-                            loss_function.regularization_loss(dense2)
+                            loss_function.regularization_loss(dense2) + \
+                            loss_function.regularization_loss(dense3)
 
     loss = data_loss + regularization_loss
 
@@ -578,7 +626,7 @@ for epoch in range(10001):
     #predictions = (activation2.output > 0.5) * 1
     #accuracy = np.mean(predictions==y)
 
-    predictions = activation2.output
+    predictions = activation3.output
     accuracy = np.mean(np.absolute(predictions - y) < accuracy_precision)
 
     #jede 100. epoche alle werte anzeigen
@@ -597,8 +645,10 @@ for epoch in range(10001):
     #activation1.backward(dropout1.dinputs)
     #dense1.backward(activation1.dinputs)
 
-    loss_function.backward(activation2.output, y)
-    activation2.backward(loss_function.dinputs)
+    loss_function.backward(activation3.output, y)
+    activation3.backward(loss_function.dinputs)
+    dense3.backward(activation3.dinputs)
+    activation2.backward(dense3.dinputs)
     dense2.backward(activation2.dinputs)
     activation1.backward(dense2.dinputs)
     dense1.backward(activation1.dinputs)
@@ -643,7 +693,9 @@ dense1.forward(X_test)
 activation1.forward(dense1.output)
 dense2.forward(activation1.output)
 activation2.forward(dense2.output)
+dense3.forward(activation2.output)
+activation3.forward(dense3.output)
 
 plt.plot(X_test, y_test)
-plt.plot(X_test, activation2.output)
+plt.plot(X_test, activation3.output)
 plt.show()
