@@ -481,6 +481,9 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
 #X, y = spiral_data(samples=100, classes=2)
 X, y = spiral_data(samples=100, classes=3)
 
+x_tester = np.zeros(100,5)
+y_tester = np.zeros(100,5)
+
 # create list in list
 # from [0,0,0,0,0,...] to [[0],[0],[0],[0],...]
 #y = y.reshape(-1,1)
@@ -497,7 +500,7 @@ dense2 = Layer_Dense(64, 1)
 
 activation2 = Activation_Sigmoid()
 # 2. activation mit verbindung zu loss
-loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
+loss_activation = Loss_CategoricalCrossentropy()
 
 #loss_function = Loss_BinaryCrossentropy()
 
