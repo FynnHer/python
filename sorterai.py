@@ -485,31 +485,30 @@ tester_y = np.zeros((100, 5))
 helper = []
     
 for i in range(100):
-    tester_x[i] = randint(1,100), randint(1,100),randint(1,100),randint(1,100),randint(1,100),
+    tester_x[i] = randint(1,100) / 100, randint(1,100) / 100,randint(1,100) / 100,randint(1,100) / 100,randint(1,100) / 100,
 
 for i in range(100):
-    helper=[]
-    for e in tester_x[i]:
-        helper.append(e)
-    helper.sort()
-    tester_y[i] = helper
-
+    placeholder = tester_x[i]
+    result = np.argsort(placeholder)
+    tester_y[i] = result
 
 # create list in list
 # from [0,0,0,0,0,...] to [[0],[0],[0],[0],...]
 #y = y.reshape(-1,1)
 
 #layer 1 mit 64 neuronen und 2 inputs
-dense1 = Layer_Dense(5, 128, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
+dense1 = Layer_Dense(5, 1028, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
 
 # activation function ReLU
 activation1 = Activation_ReLU()
 
 #dropout1 = Layer_Dropout(0.1)
 # layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
-dense2 = Layer_Dense(128, 5)
+dense2 = Layer_Dense(1028, 256)
 
 activation2 = Activation_ReLU()
+
+dense3 = Layer_Dense(256,5)
 # 2. activation mit verbindung zu loss
 loss_activation = Loss_CategoricalCrossentropy()
 
@@ -519,7 +518,7 @@ loss_activation = Loss_CategoricalCrossentropy()
 #optimizer = Optimizer_SGD(decay=1e-3, momentum = 0.9)
 #optimizer = Optimizer_Adagrad(decay=1e-4)
 #optimizer = Optimizer_RMSprop(decay=1e-4)
-optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-5)
+optimizer = Optimizer_Adam(learning_rate=0.2, decay=5e-5)
 #optimizer = Optimizer_Adam(decay=5e-7)
 
 # 10001 epochen
@@ -535,28 +534,27 @@ for epoch in range(10001):
     #dropout1.forward(activation1.output)
     dense2.forward(activation1.output)
     activation2.forward(dense2.output)
-
+    dense3.forward(activation2.output)
     #binary variante
     #dense2.forward(activation1.output)
 
     #print(activation2.output, tester_y)
-    data_loss = loss_activation.calculate(activation2.output, tester_y)
+    data_loss = loss_activation.calculate(dense3.output, tester_y)
     #data_loss = loss_activation.calculate(activation2.output, tester_y)
     #data_loss = loss_function.calculate(activation2.output, y)
-    regularization_loss = loss_activation.regularization_loss(dense1) + loss_activation.regularization_loss(dense2)
+    regularization_loss = loss_activation.regularization_loss(dense1) + loss_activation.regularization_loss(dense2) + loss_activation.regularization_loss(dense3)
     #regularization_loss = loss_function.regularization_loss(dense1) + loss_function.regularization_loss(dense2)
 
     loss = data_loss + regularization_loss
     #loss = data_loss
     # Accuracy berechnen
-    #predictions = np.argmax(loss_activation.output, axis=1)
-    #if len(y.shape) == 2:
-    #    tester_y = np.argmax(tester_y, axis=1)
+    predictions = np.argmax(dense3.output, axis=1)
+    if len(y.shape) == 2:
+        tester_y = np.argmax(tester_y, axis=1)
     #accuracy = np.mean(predictions==tester_y)
-    #predictions = (activation2.output > 0.5) * 1
-    #accuracy = np.mean(predictions==y)
+    predictions = (dense3.output > 0.5) * 1
+   #accuracy = np.mean(predictions==y)
 
-    print(data_loss)
 
     #jede 100. epoche alle werte anzeigen
     if not epoch % 100:
@@ -568,8 +566,10 @@ for epoch in range(10001):
               f'lr: {optimizer.current_learning_rate}')
 
     # backward pass ausführen (partial derivatives)
-    loss_activation.backward(loss_activation.output, tester_y)
-    dense2.backward(loss_activation.dinputs)
+    #loss_activation.backward(dense3.output, tester_y)
+    dense3.backward(dense3.output)
+    activation2.backward(dense3.dinputs)
+    dense2.backward(activation2.dinputs)
     #dropout1.backward(dense2.dinputs)
     activation1.backward(dense2.dinputs)
     dense1.backward(activation1.dinputs)
@@ -587,17 +587,17 @@ for epoch in range(10001):
     optimizer.update_params(dense2)
     optimizer.post_update_params()
     
-X_test, y_test = spiral_data(samples=100, classes=3)
-dense1.forward(X_test)
-activation1.forward(dense1.output)
-dense2.forward(activation1.output)
-loss = loss_activation.forward(dense2.output, y_test)
+ #   X_test, y_test = spiral_data(samples=100, classes=3)
+  #  dense1.forward(X_test)
+   # activation1.forward(dense1.output)
+    #dense2.forward(activation1.output)
+#    loss = loss_activation.forward(dense2.output, y_test)
 
-predictions = np.argmax(loss_activation.output, axis=1)
-if len(y_test.shape) == 2:
-	y_test = np.argmax(y_test, axis= 1) 
-accuracy = np.mean(predictions==y_test)
-print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
+ #   predictions = np.argmax(loss_activation.output, axis=1)
+  #  if len(y_test.shape) == 2:
+   #     y_test = np.argmax(y_test, axis= 1) 
+    #accuracy = np.mean(predictions==y_test)
+    #print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
 
 #X_test, y_test = spiral_data(samples=100, classes=2)
 #print(X_test, y_test)
@@ -610,3 +610,14 @@ print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
 #predictions = (activation2.output > 0.5) * 1
 #accuracy = np.mean(predictions==y_test)
 #print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
+inpt = np.zeros((2,5))
+inpt[0] = randint(1,100),randint(1,100),randint(1,100),randint(1,100),randint(1,100)
+inpt[1] = randint(1,100),randint(1,100),randint(1,100),randint(1,100),randint(1,100)
+print(inpt)
+dense1.forward(inpt)
+activation1.forward(dense1.output)
+dense2.forward(activation1.output)
+activation2.forward(dense2.output)
+dense3.forward(activation2.output)
+#activation2.forward(dense2.output)
+print(dense2.output)
