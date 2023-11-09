@@ -1,7 +1,8 @@
 import numpy as np
 import nnfs
 from nnfs.datasets import spiral_data
-
+from nnfs.datasets import sine_data
+import matplotlib.pyplot as plt
 nnfs.init()
 
 
@@ -53,9 +54,7 @@ class Layer_Dense:
 
         self.dinputs = np.dot(dvalues, self.weights.T)
 
-
 #Dropout
-
 class Layer_Dropout:
 
     def __init__(self, rate):
@@ -71,7 +70,6 @@ class Layer_Dropout:
 
     def backward(self, dvalues):
         self.dinputs = dvalues * self.binary_mask
-
 
 #Activations
 
@@ -136,6 +134,17 @@ class Activation_Softmax:
             
             self.dinputs[index] = np.dot(jacobian_matrix,
                                          single_dvalues)
+
+# Linear Activation
+class Activation_Linear:
+
+
+    def forward(self, inputs):
+        self.inputs = inputs
+        self.output = inputs
+
+    def backward(self, dvalues):
+        self.dinputs = dvalues.copy()
 
 #Optimizers
 
@@ -338,6 +347,7 @@ class Optimizer_Adam:
     def post_update_params(self):
         self.iterations += 1
 
+#Loss
 
 # generellen Loss berechnen
 class Loss:
@@ -374,7 +384,6 @@ class Loss:
             regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases * layer.biases)
 
         return regularization_loss
-
 
 # Cross-entropy loss funktion
 class Loss_CategoricalCrossentropy(Loss):
@@ -417,33 +426,6 @@ class Loss_CategoricalCrossentropy(Loss):
         # gradient normalizen
         self.dinputs = self.dinputs / samples
 
-class Loss_BinaryCrossentropy(Loss):
-
-    def forward(self, y_pred, y_true):
-
-        #clip to prevent division by 0
-        #clip both sides to prevent mean
-        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
-
-        sample_losses = -(y_true * np.log(y_pred_clipped) + (1 - y_true) * 
-                          np.log(1 - y_pred_clipped))
-        sample_losses = np.mean(sample_losses, axis=1)
-
-        return sample_losses
-    
-    def backward(self, dvalues, y_true):
-        #number of samples
-        samples = len(dvalues)
-        #number of outputs per sample, count with first sample
-        outputs = len(dvalues[0])
-        #clip to prevent division by 0 and clip both sides to prevent mean
-        clipped_values = np.clip(dvalues, 1e-7, 1 - 1e-7)
-
-        self.dinputs = -(y_true / clipped_values - (1 - y_true) /
-                         (1 - clipped_values)) / outputs
-        
-        self.dinputs = self.dinputs / samples
-
 #loss for softmax
 class Activation_Softmax_Loss_CategoricalCrossentropy():
 
@@ -476,75 +458,128 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
         self.dinputs[range(samples), y_true] -= 1
         self.dinputs = self.dinputs / samples
 
+#Binary Cross-entropy loss funktion
+class Loss_BinaryCrossentropy(Loss):
+
+    def forward(self, y_pred, y_true):
+
+        #clip to prevent division by 0
+        #clip both sides to prevent mean
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        sample_losses = -(y_true * np.log(y_pred_clipped) + (1 - y_true) * 
+                          np.log(1 - y_pred_clipped))
+        sample_losses = np.mean(sample_losses, axis=1)
+
+        return sample_losses
+    
+    def backward(self, dvalues, y_true):
+        #number of samples
+        samples = len(dvalues)
+        #number of outputs per sample, count with first sample
+        outputs = len(dvalues[0])
+        #clip to prevent division by 0 and clip both sides to prevent mean
+        clipped_values = np.clip(dvalues, 1e-7, 1 - 1e-7)
+
+        self.dinputs = -(y_true / clipped_values - (1 - y_true) /
+                         (1 - clipped_values)) / outputs
+        
+        self.dinputs = self.dinputs / samples
+
+#loss mean squared error
+class Loss_MeanSquaredError(Loss):
+
+    def forward(self, y_pred, y_true):
+        sample_losses = np.mean((y_true - y_pred)**2, axis=-1)
+        return sample_losses
+    
+    def backward(self, dvalues, y_true):
+        samples = len(dvalues)
+        outputs = len(dvalues[0])
+
+        self.dinputs = -2 * (y_true - dvalues) / outputs
+        self.dinputs = self.dinputs / samples
+
+#loss mean absolute error
+class Loss_MeanAbsoluteError(Loss):
+
+    def forward(self, y_pred, y_true):
+        samples_losses = np.mean(np.abs(y_true - y_pred), axis=1)
+        return samples_losses
+    
+    def backward(self, dvalues, y_true):
+        samples = len(dvalues)
+        outputs = len(dvalues[0])
+
+        self.dinputs = np.sign(y_true - dvalues) / outputs
+        self.dinputs = self.dinputs / samples
+
 
 # Dataset erstellen
 #X, y = spiral_data(samples=100, classes=2)
-X, y = spiral_data(samples=500, classes=3)
+#X, y = spiral_data(samples=100, classes=3)
+X, y = sine_data()
 
-# create list in list
-# from [0,0,0,0,0,...] to [[0],[0],[0],[0],...]
 #y = y.reshape(-1,1)
 
-#layer 1 mit 64 neuronen und 2 inputs
-dense1 = Layer_Dense(2, 512, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
+#dense1 = Layer_Dense(2, 64, weight_regularizer_l2=5e-4,bias_regularizer_l2=5e-4)
+dense1 = Layer_Dense(1, 64)
 
 # activation function ReLU
 activation1 = Activation_ReLU()
 
-dropout1 = Layer_Dropout(0.05)
+#dropout1 = Layer_Dropout(0.05)
 # layer 2 mit 64 neuronen (64 outputs von layer 1) und 3 outputs (3 farben)
-dense2 = Layer_Dense(512, 3)
+dense2 = Layer_Dense(64, 1)
 
-#activation2 = Activation_ReLU()
+activation2 = Activation_Linear()
 
 #dense3 = Layer_Dense(64,3)
 # 2. activation mit verbindung zu loss
-loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
+#loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 
-#loss_function = Loss_BinaryCrossentropy()
+loss_function = Loss_MeanSquaredError()
 
 # optimizer auswählen
 #optimizer = Optimizer_SGD(decay=1e-3, momentum = 0.9)
 #optimizer = Optimizer_Adagrad(decay=1e-4)
 #optimizer = Optimizer_RMSprop(decay=1e-4)
-optimizer = Optimizer_Adam(learning_rate=0.02, decay=5e-5)
+#optimizer = Optimizer_Adam(learning_rate=0.02, decay=5e-5)
 #optimizer = Optimizer_Adam(decay=5e-7)
+optimizer = Optimizer_Adam()
+
+accuracy_precision = np.std(y) / 250
 
 # 10001 epochen
 for epoch in range(10001):
 
     #normaler forward pass
     dense1.forward(X)
+    activation1.forward(dense1.output)  
+    #dropout1.forward(activation1.output)
+    dense2.forward(activation1.output)
+    activation2.forward(dense2.output)
 
-    activation1.forward(dense1.output)
+    #data_loss = loss_activation.forward(dense2.output, y)
+    data_loss = loss_function.calculate(activation2.output, y)
 
-    #dropout variante
-    
-    dropout1.forward(activation1.output)
-    dense2.forward(dropout1.output)
-   
-
-    #binary variante
-    #dense2.forward(activation1.output)
-    #activation2.forward(dense2.output)
-
-    data_loss = loss_activation.forward(dense2.output, y)
-    #data_loss = loss_function.calculate(activation2.output, y)
-
-    regularization_loss = loss_activation.loss.regularization_loss(dense1) + loss_activation.loss.regularization_loss(dense2)
-    #regularization_loss = loss_function.regularization_loss(dense1) + loss_function.regularization_loss(dense2)
+    #regularization_loss = loss_activation.loss.regularization_loss(dense1) + loss_activation.loss.regularization_loss(dense2)
+    regularization_loss = loss_function.regularization_loss(dense1) + \
+                            loss_function.regularization_loss(dense2)
 
     loss = data_loss + regularization_loss
 
     # Accuracy berechnen
-    predictions = np.argmax(loss_activation.output, axis=1)
-    if len(y.shape) == 2:
-        y = np.argmax(y, axis=1)
-    accuracy = np.mean(predictions==y)
+    #predictions = np.argmax(activation2.output, axis=1)
+    #if len(y.shape) == 2:
+    #    y = np.argmax(y, axis=1)
+    #accuracy = np.mean(predictions==y)
 
     #predictions = (activation2.output > 0.5) * 1
     #accuracy = np.mean(predictions==y)
 
+    predictions = activation2.output
+    accuracy = np.mean(np.absolute(predictions - y) < accuracy_precision)
 
     #jede 100. epoche alle werte anzeigen
     if not epoch % 100:
@@ -556,18 +591,17 @@ for epoch in range(10001):
               f'lr: {optimizer.current_learning_rate}')
 
     # backward pass ausführen (partial derivatives)
-    loss_activation.backward(loss_activation.output, y)
-
-    dense2.backward(loss_activation.dinputs)
-    dropout1.backward(dense2.dinputs)
-    activation1.backward(dropout1.dinputs)
-    dense1.backward(activation1.dinputs)
-
-    #loss_function.backward(activation2.output, y)
-    #activation2.backward(loss_function.dinputs)
-    #dense2.backward(activation2.dinputs)
-    #activation1.backward(dense2.dinputs)
+    #loss_activation.backward(loss_activation.output, y)
+    #dense2.backward(loss_activation.dinputs)
+    #dropout1.backward(dense2.dinputs)
+    #activation1.backward(dropout1.dinputs)
     #dense1.backward(activation1.dinputs)
+
+    loss_function.backward(activation2.output, y)
+    activation2.backward(loss_function.dinputs)
+    dense2.backward(activation2.dinputs)
+    activation1.backward(dense2.dinputs)
+    dense1.backward(activation1.dinputs)
 
 
     # optimizer verändert weights und biases
@@ -575,29 +609,41 @@ for epoch in range(10001):
     optimizer.update_params(dense1)
     optimizer.update_params(dense2)
     optimizer.post_update_params()
-    
-X_test, y_test = spiral_data(samples=100, classes=3)
+
+def platzhalterSpiralNonBinary():    
+    X_test, y_test = spiral_data(samples=100, classes=3)
+    dense1.forward(X_test)
+    activation1.forward(dense1.output)
+    dropout1.forward(activation1.output)
+    dense2.forward(dropout1.output)
+
+    loss = loss_activation.forward(dense2.output, y_test)
+
+    predictions = np.argmax(loss_activation.output, axis=1)
+    if len(y_test.shape) == 2:
+        y_test = np.argmax(y_test, axis= 1) 
+    accuracy = np.mean(predictions==y_test)
+    print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
+def platzhalterSpiralBinary():
+
+    X_test, y_test = spiral_data(samples=100, classes=2)
+    y_test = y_test.reshape(-1,1)
+    dense1.forward(X_test)
+    activation1.forward(dense1.output)
+    dense2.forward(activation1.output)
+    activation2.forward(dense2.output)
+    loss = loss_function.calculate(activation2.output, y_test)
+    predictions = (activation2.output > 0.5) * 1
+    accuracy = np.mean(predictions==y_test)
+    print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
+
+X_test, y_test = sine_data()
+
 dense1.forward(X_test)
 activation1.forward(dense1.output)
-dropout1.forward(activation1.output)
-dense2.forward(dropout1.output)
+dense2.forward(activation1.output)
+activation2.forward(dense2.output)
 
-loss = loss_activation.forward(dense2.output, y_test)
-
-predictions = np.argmax(loss_activation.output, axis=1)
-if len(y_test.shape) == 2:
-	y_test = np.argmax(y_test, axis= 1) 
-accuracy = np.mean(predictions==y_test)
-print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
-
-#X_test, y_test = spiral_data(samples=100, classes=2)
-#print(X_test, y_test)
-#y_test = y_test.reshape(-1,1)
-#dense1.forward(X_test)
-#activation1.forward(dense1.output)
-#dense2.forward(activation1.output)
-#activation2.forward(dense2.output)
-#loss = loss_function.calculate(activation2.output, y_test)
-#predictions = (activation2.output > 0.5) * 1
-#accuracy = np.mean(predictions==y_test)
-#print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
+plt.plot(X_test, y_test)
+plt.plot(X_test, activation2.output)
+plt.show()
