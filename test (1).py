@@ -7,18 +7,21 @@ nnfs.init()
 
 class Model:
     
-    def __init__(self):       
+    def __init__(self):
         self.layers = []
         
     def add(self, layer):
         self.layers.append(layer)
         
-    def set(self, *, loss, optimizer):
+    def set(self, *, loss, optimizer, accuracy):
         self.loss = loss
         self.optimizer = optimizer
+        self.accuracy = accuracy
                 
     def finalize(self):
+        #create and set input layer
         self.input_layer = Layer_Input()
+        #count all objects
         layer_count = len(self.layers)
         self.trainable_layers = []
         
@@ -36,20 +39,32 @@ class Model:
                 
             if hasattr(self.layers[i], 'weights'):
                 self.trainable_layers.append(self.layers[i])
-       
-    def train(self, X, y, *, epochs=1, print_every=1):       
+        
+        self.loss.remember_trainable_layers(
+            self.trainable_layers
+        )
+           
+    def train(self, X, y, *, epochs=1, print_every=1):
+        self.accuracy.init(y)
         for epoch in range(1, epochs+1):          
                 output = self.forward(X)
-                print(output)
-                exit()
+                
+                data_loss, regularization_loss = \
+                    self.loss.calculate(output, y)
+                loss = data_loss + regularization_loss
+                
+                predictions = self.output_layer_activation.predictions(output)
+                accuracy = self.accuracy.calculate(predictions, y)
              
     def forward(self, X):
+        
         self.input_layer.forward(X)
+        print(self.layers)
+        
         for layer in self.layers:
             layer.forward(layer.prev.output)
             
-        return layer.output
-
+            return layer.output
 
 class Layer_Dense:
 
@@ -122,6 +137,9 @@ class Layer_Dropout:
 
 #Sigmoid activation (0 min, 1 max)
 class Activation_Sigmoid:
+    def predictions(self, outputs):
+        return(outputs > 0.5) * 1
+    
     def forward(self,inputs):
         #save inputs of sigmoid
         self.inputs = inputs
@@ -132,6 +150,8 @@ class Activation_Sigmoid:
 
 # ReLU activation (rectified linear unit)
 class Activation_ReLU:
+    def predictions(self, outputs):
+        return outputs
 
     # normal berechnen
     def forward(self, inputs):
@@ -150,6 +170,8 @@ class Activation_ReLU:
 # Softmax activation (e**x)
 class Activation_Softmax:
 
+    def predictions(self,outputs):
+        return np.argmax(outputs, axis=1)
     # normal berechnen
     def forward(self, inputs):
 
@@ -184,7 +206,8 @@ class Activation_Softmax:
 
 # Linear Activation
 class Activation_Linear:
-
+    def predictions(self, outputs):
+        return outputs
 
     def forward(self, inputs):
         self.inputs = inputs
@@ -398,8 +421,9 @@ class Optimizer_Adam:
 
 # generellen Loss berechnen
 class Loss:
-
-
+    def remember_trainable_layers(self, trainable_layers):
+        self.trainable_layers = trainable_layers
+    
     def calculate(self, output, y):
 
         # loss für samples berechnen
@@ -408,27 +432,32 @@ class Loss:
         # durchschnitt berechnen
         data_loss = np.mean(sample_losses)
 
-        return data_loss
+        return data_loss, self,regularization_loss()
     
-    def regularization_loss(self, layer):
+    def regularization_loss(self):
 
         regularization_loss = 0
 
-        #L1 - weights
-        #only factor > 0
-        if layer.weight_regularizer_l1 > 0:
-            regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
+        for layer in self.trainable_layers:    
+            #L1 - weights
+            #only factor > 0
+            if layer.weight_regularizer_l1 > 0:
+                regularization_loss += layer.weight_regularizer_l1 * \
+                np.sum(np.abs(layer.weights))
 
-        # L2 - weights
-        if layer.weight_regularizer_l2 > 0:
-            regularization_loss += layer.weight_regularizer_l2 * np.sum(layer.weights * layer.weights)
+            # L2 - weights
+            if layer.weight_regularizer_l2 > 0:
+                regularization_loss += layer.weight_regularizer_l2 * \
+                np.sum(layer.weights * layer.weights)
 
-        # L1 - bias
-        if layer.bias_regularizer_l1 > 0:
-            regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.biases))
+            # L1 - bias
+            if layer.bias_regularizer_l1 > 0:
+                regularization_loss += layer.bias_regularizer_l1 * \
+                np.sum(np.abs(layer.biases))
 
-        if layer.bias_regularizer_l2 > 0:
-            regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases * layer.biases)
+            if layer.bias_regularizer_l2 > 0:
+                regularization_loss += layer.bias_regularizer_l2 * \
+                np.sum(layer.biases * layer.biases)
 
         return regularization_loss
 
@@ -561,6 +590,25 @@ class Loss_MeanAbsoluteError(Loss):
         self.dinputs = np.sign(y_true - dvalues) / outputs
         self.dinputs = self.dinputs / samples
 
+class Accuracy:
+    def calculate(self, predictions, y):
+        comparisons = self.compare(predictions, y)
+        accuracy = np.mean(comparisons)
+        return accuracy
+    
+class Accuracy_Regression(Accuracy):
+    def __init__(self):
+        self.precision = None
+    
+    def init(self, y ,reinit=False):
+        if self.precision is None or reinit:
+            self.precision = np.std(y) / 250
+    
+    def compare(self, predictions, y):
+        return np.absolute(predictions - y) < self.precision
+
+
+
 
 # Dataset erstellen
 #X, y = spiral_data(samples=100, classes=2)
@@ -569,6 +617,7 @@ X, y = sine_data()
 
 #y = y.reshape(-1,1)
 model = Model()
+
 
 model.add(Layer_Dense(1,64))
 model.add(Activation_ReLU)
@@ -687,15 +736,15 @@ def platzhalterSpiralBinary():
     accuracy = np.mean(predictions==y_test)
     print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
 
-X_test, y_test = sine_data()
+#X_test, y_test = sine_data()
 
-dense1.forward(X_test)
-activation1.forward(dense1.output)
-dense2.forward(activation1.output)
-activation2.forward(dense2.output)
-dense3.forward(activation2.output)
-activation3.forward(dense3.output)
+#dense1.forward(X_test)
+#activation1.forward(dense1.output)
+#dense2.forward(activation1.output)
+#activation2.forward(dense2.output)
+#dense3.forward(activation2.output)
+#activation3.forward(dense3.output)
 
-plt.plot(X_test, y_test)
-plt.plot(X_test, activation3.output)
-plt.show()
+#plt.plot(X_test, y_test)
+#plt.plot(X_test, activation3.output)
+#plt.show()
