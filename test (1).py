@@ -709,7 +709,7 @@ class Model:
                             f'lr {self.optimizer.current_learning_rate}')
                     
             epoch_data_loss, epoch_regularization_loss = \
-                self.loss.calcute_accumulated(include_regularization=True)
+                self.loss.calculate_accumulated(include_regularization=True)
             epoch_loss = epoch_data_loss + epoch_regularization_loss
             epoch_accuracy = self.accuracy.calculate_accumulated()
             print(f'training, ' +
@@ -844,7 +844,12 @@ def create_data_mnist(path):
 #create data
 X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
 #shuffle data
+
+validation_X = X[25]
+validation_y = y[25]
+
 keys = np.array(range(X.shape[0]))
+np.random.shuffle(keys)
 X = X[keys]
 y = y[keys]
 
@@ -867,6 +872,9 @@ model.set(
     accuracy=Accuracy_Categorical()
 )
 
-model.finalize
+model.finalize()
 model.train(X, y, validation_data=(X_test, y_test),
-            epochs=5, batch_size=128, print_every=100)
+            epochs=10, batch_size=128, print_every=100)
+
+
+plt.plot(validation_X)
