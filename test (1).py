@@ -845,8 +845,7 @@ def create_data_mnist(path):
 X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
 #shuffle data
 
-validation_X = X[25]
-validation_y = y[25]
+
 
 keys = np.array(range(X.shape[0]))
 np.random.shuffle(keys)
@@ -856,6 +855,11 @@ y = y[keys]
 #flatten and scale -1 to 1
 X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
 X_test = (X_test.reshape(X_test.shape[0], -1).astype(np.float32) -127.5) / 127.5
+
+validation_X = X[25]
+validation_y = y[25]
+
+plt.plot(validation_X)
 
 model = Model()
 
