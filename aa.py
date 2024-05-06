@@ -6,7 +6,6 @@ class Wuerfel():
   def werfen(self):
     self.augen = random.randint(1,6)
   def getAugen(self):
-    self.werfen()
     return self.augen
   
 class Konto():
@@ -24,7 +23,7 @@ class Spielfeld():
     self.gesetzteZahl = 0
   def setzen(self, zahl):
     self.gesetzteZahl = zahl
-  def getGesetzeZahl(self):
+  def getGesetzteZahl(self):
     return self.gesetzteZahl
   
 class Spieler():
@@ -32,27 +31,32 @@ class Spieler():
     pass
 
   def spielen(self, zahl):
+    wuerfelA.werfen()
+    wuerfelB.werfen()
+    wuerfelC.werfen()
     spielfeld.gesetzteZahl = zahl
-  
+    
 class Spielanbieter():
   def __init__(self):
     pass
   def gewinnAuszahlen(self):
     richtig = False
     for i in [wuerfelA.getAugen(),wuerfelB.getAugen(), wuerfelC.getAugen()]:
-      if spielfeld.getGesetzteZahl == i:
+      if i == spielfeld.gesetzteZahl:
         konto.einzahlen(1)
         richtig = True
     if richtig:
       konto.einzahlen(1)
+    else:
+      konto.auszahlen(1)
 
 wuerfelA = Wuerfel()
 wuerfelB = Wuerfel()
 wuerfelC = Wuerfel()
-konto = Konto(10)
+konto = Konto(20)
 spielfeld = Spielfeld()
 spieler = Spieler()
-spielanbierter = Spielanbierter()
+spielanbieter = Spielanbieter()
 print('Wuerfel: ', wuerfelA.getAugen(), wuerfelB.getAugen(), wuerfelC.getAugen())
 print('Konto  : ', konto.getStand())
 print()
