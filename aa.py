@@ -42,7 +42,7 @@ class Spielanbieter():
       richtig = True
       konto.einzahlen(1)
     if richtig:
-      Konto.einzahlen(1)
+      konto.einzahlen(1)
 
 wuerfelA = Wuerfel()
 wuerfelB = Wuerfel()
