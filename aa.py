@@ -33,7 +33,7 @@ class Spieler():
   def spielen(self, zahl):
     spielfeld.gesetzteZahl = zahl
   
-class Spielanbierter():
+class Spielanbieter():
   def __init__(self):
     pass
   def gewinnAuszahlen(self):
