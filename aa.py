@@ -6,6 +6,7 @@ class Wuerfel():
   def werfen(self):
     self.augen = random.randint(1,6)
   def getAugen(self):
+    self.werfen()
     return self.augen
   
 class Konto():
