@@ -49,7 +49,7 @@ wuerfelB = Wuerfel()
 wuerfelC = Wuerfel()
 konto = Konto()
 spielfeld = Spielfeld()
-
+spieler = Spieler()
 print('Wuerfel: ', wuerfelA.getAugen(), wuerfelB.getAugen(), wuerfelC.getAugen())
 print('Konto  : ', konto.getStand())
 print()
