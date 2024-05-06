@@ -39,9 +39,10 @@ class Spielanbieter():
     pass
   def gewinnAuszahlen(self):
     richtig = False
-    for spielfeld.getGesetzeZahl in [wuerfelA.getAugen(),wuerfelB.getAugen(), wuerfelC.getAugen()]:
-      richtig = True
-      konto.einzahlen(1)
+    for i in [wuerfelA.getAugen(),wuerfelB.getAugen(), wuerfelC.getAugen()]:
+      if spielfeld.getGesetzteZahl == i:
+        konto.einzahlen(1)
+        richtig = True
     if richtig:
       konto.einzahlen(1)
 
